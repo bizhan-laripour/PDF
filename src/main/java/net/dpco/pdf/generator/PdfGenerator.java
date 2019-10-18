@@ -9,7 +9,9 @@ import com.itextpdf.text.pdf.draw.LineSeparator;
 import net.dpco.pdf.dto.Model;
 import net.dpco.pdf.entity.Applicant;
 import net.dpco.pdf.entity.Dependant;
+import net.dpco.pdf.entity.ResidenceRecord;
 import net.dpco.pdf.entity.Spouse;
+import net.dpco.pdf.enums.ResidenceCase;
 import net.dpco.pdf.service.ApplicantService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
@@ -21,7 +23,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -55,19 +56,19 @@ public class PdfGenerator {
       document.open();
       document.add(documentBorder());
       createTable(document, 3, header(), bold, Element.ALIGN_CENTER, 0, 0);
-      addLine(document, 1f , 100);
+      addLine(document, 1.5f, 100 , BaseColor.BLACK);
       createTable(document, 1, applicantsHeader(), bold, Element.ALIGN_LEFT, 0, 10);
       List<String> applicants = applicantsInfo(model);
-      createTable(document, 4, applicants, normal, Element.ALIGN_LEFT, 0, 20);
-      addLine(document , 0.5f , 80);
+      createTable(document, 6, applicants, normal, Element.ALIGN_LEFT, 0, 20);
+      addLine(document, 1f, 80 , BaseColor.BLACK);
       createTable(document, 1, spousesHeader(), bold, Element.ALIGN_LEFT, 0, 10);
       List<String> spouses = spouses(model);
-      createTable(document, 4, spouses, normal, Element.ALIGN_LEFT, 0, 20);
-      addLine(document , 0.5f , 80);
-      createTable(document, 1, dependantsHeader(), bold, Element.ALIGN_LEFT ,0, 10);
+      createTable(document, 6, spouses, normal, Element.ALIGN_LEFT, 0, 20);
+      addLine(document, 1f, 80 , BaseColor.BLACK);
+      createTable(document, 1, dependantsHeader(), bold, Element.ALIGN_LEFT, 0, 10);
 
-      createTable(document , 4 , dependants(model) , normal , Element.ALIGN_LEFT , 0 , 20);
-      addLine(document , 0.5f , 80);
+      createTable(document, 6, dependants(model), normal, Element.ALIGN_LEFT, 0, 20);
+      addLine(document, 1f, 80 , BaseColor.BLACK);
       document.close();
       writer.close();
       OutputStream os = response.getOutputStream();
@@ -111,9 +112,10 @@ public class PdfGenerator {
     }
   }
 
-  private void addLine(Document document, float lineWith , int percentage) throws Exception {
+  private void addLine(Document document, float lineWith, int percentage , BaseColor color) throws Exception {
     try {
-      document.add(new LineSeparator(lineWith, percentage, null, Element.ALIGN_CENTER, -5));
+      document.add(
+          new LineSeparator(lineWith, percentage, color, Element.ALIGN_CENTER, -5));
     } catch (Exception ex) {
       throw new Exception(ex);
     }
@@ -129,8 +131,39 @@ public class PdfGenerator {
       list.add(applicant.getLastName());
       list.add(environment.getProperty("national_code"));
       list.add(applicant.getNationalCode());
-      list.add(environment.getProperty("tracking_code"));
-      list.add(applicant.getTrackingCode().toString());
+      list.add(environment.getProperty("fatherName"));
+      list.add(applicant.getFatherName());
+      list.add(environment.getProperty("birth_date"));
+      list.add(applicant.getBirthDate().toString());
+      list.add(environment.getProperty("birth_place"));
+      list.add(applicant.getBirthPlace());
+      list.add(environment.getProperty("job"));
+      list.add(applicant.getJob().getTitle());
+      list.add(environment.getProperty("mobile_no"));
+      list.add(applicant.getMobileNo().toString());
+      list.add(environment.getProperty("birth_crtificate_no"));
+      list.add(applicant.getBirthCertificateNo());
+      StringBuilder builder = new StringBuilder();
+      StringBuilder currentCity = new StringBuilder();
+      for (ResidenceRecord residenceRecord : applicant.getResidenceRecords()) {
+        if (residenceRecord.getResidenceCase().equals(ResidenceCase.CURRENT)) {
+          currentCity.append(
+              residenceRecord.getAddress().getCenter().getProvince()
+                  + "/"
+                  + residenceRecord.getAddress().getCenter().getCity());
+        }
+        builder.append(residenceRecord.getAddress().getAddress() + ";");
+      }
+      builder.delete(builder.length() - 1, builder.length());
+      list.add(environment.getProperty("existance_place"));
+      list.add(currentCity.toString());
+      list.add(environment.getProperty("dependants_number"));
+      list.add(String.valueOf(applicant.getDependants().size()));
+      list.add(environment.getProperty("address"));
+      list.add(builder.toString());
+      list.add(" ");
+      list.add(" ");
+
       return list;
 
     } catch (Exception ex) {
@@ -152,7 +185,12 @@ public class PdfGenerator {
         list.add(spouse.getNationalCode());
         list.add(environment.getProperty("fatherName"));
         list.add(spouse.getFatherName());
+        list.add(environment.getProperty("birth_crtificate_no"));
+        list.add(spouse.getBirthCertificateNo());
+        list.add(environment.getProperty("mobile_no"));
+        list.add(spouse.getMobileNo());
       }
+
       return list;
     } catch (Exception ex) {
       throw new Exception(ex.getMessage());
@@ -160,26 +198,26 @@ public class PdfGenerator {
   }
 
   private List<String> dependants(Model model) throws Exception {
-    try{
+    try {
       Applicant applicant = findByModel(model);
-      Set<Dependant> dependants  = applicant.getDependants();
+      Set<Dependant> dependants = applicant.getDependants();
       List<String> list = new ArrayList<>();
-        for(Dependant dep : dependants){
-          list.add(environment.getProperty("name"));
-          list.add(dep.getFirstName());
-          list.add(environment.getProperty("last_name"));
-          list.add(dep.getLastName());
-          list.add(environment.getProperty("national_code"));
-          list.add(dep.getNationalCode());
-          list.add(environment.getProperty("birt_date"));
-          list.add(dep.getBirthYear());
-          list.add(environment.getProperty("gender"));
-          list.add(dep.getGender().toString());
-          list.add(" ");
-          list.add(" ");
+      for (Dependant dep : dependants) {
+        list.add(environment.getProperty("name"));
+        list.add(dep.getFirstName());
+        list.add(environment.getProperty("last_name"));
+        list.add(dep.getLastName());
+        list.add(environment.getProperty("national_code"));
+        list.add(dep.getNationalCode());
+        list.add(environment.getProperty("birth_date"));
+        list.add(dep.getBirthYear());
+        list.add(environment.getProperty("gender"));
+        list.add(dep.getGender().toString());
+        list.add(" ");
+        list.add(" ");
       }
       return list;
-    }catch (Exception ex){
+    } catch (Exception ex) {
       throw new Exception(ex.getMessage());
     }
   }
@@ -226,7 +264,7 @@ public class PdfGenerator {
     }
   }
 
-  private List<String> dependantsHeader(){
+  private List<String> dependantsHeader() {
     List<String> dependantsHeader = new ArrayList<>();
     dependantsHeader.add(environment.getProperty("dependants_header"));
     return dependantsHeader;
