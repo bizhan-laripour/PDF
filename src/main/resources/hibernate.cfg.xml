@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 5.3//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-5.3.dtd">
+
+
+<hibernate-configuration>
+    <session-factory>
+
+        <property name="connection.url">jdbc:mysql://127.0.0.1/bizhan?serverTimezone=UTC</property>
+        <property name="hbm2ddl.auto">none</property>
+        <property name="dialect">org.hibernate.dialect.MySQL5Dialect</property>
+        <property name="connection.username">root</property>
+        <property name="connection.password"></property>
+        <property name="connection.driver_class">com.mysql.cj.jdbc.Driver</property>
+        <property name="hibernate.show_sql">true</property>
+        <mapping class="net.dpco.pdf.entity.Applicant"/>
+        <mapping class="net.dpco.pdf.entity.Dependant"/>
+        <mapping class="net.dpco.pdf.entity.Spouse"/>
+        <mapping class="net.dpco.pdf.entity.Job"/>
+        <mapping class="net.dpco.pdf.entity.ResidenceRecord"/>
+        <mapping class="net.dpco.pdf.entity.Address"/>
+        <mapping class="net.dpco.pdf.entity.Center"/>
+        <mapping class="net.dpco.pdf.entity.Land"/>
+        <mapping class="net.dpco.pdf.entity.LandOwner"/>
+
+    </session-factory>
+</hibernate-configuration>

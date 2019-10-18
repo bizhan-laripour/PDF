@@ -1,0 +1,5 @@
+package net.dpco.pdf.enums;
+
+public enum EducationLevel {
+  UNDER_MIDDLE_SCHOOL, MIDDLE_SCHOOL, ASSOCIATE_DEGREE, HIGH_SCHOOL, BACHELOR, MASTER, DOCTORATE
+}

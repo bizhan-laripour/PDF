@@ -2,7 +2,6 @@ package net.dpco.pdf.controller;
 
 import com.itextpdf.text.DocumentException;
 import net.dpco.pdf.dto.Model;
-import net.dpco.pdf.generator.PdfGenerator;
 import net.dpco.pdf.service.PdfService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -28,8 +27,12 @@ public class MemberController {
   @RequestMapping(path = "/get", method = RequestMethod.POST)
   public ResponseEntity<byte[]> get(
       @RequestBody Model model, HttpServletRequest request, HttpServletResponse response)
-      throws DocumentException {
+          throws Exception {
+      try{
     return new ResponseEntity<byte[]>(
         pdfService.makePdf(model, request, response), HttpStatus.ACCEPTED);
+    }catch (Exception ex){
+          throw new Exception(ex.getMessage());
+      }
   }
 }

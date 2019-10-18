@@ -1,13 +1,16 @@
 package net.dpco.pdf.generator;
 
 import com.itextpdf.text.*;
-import com.itextpdf.text.pdf.*;
+import com.itextpdf.text.pdf.BaseFont;
+import com.itextpdf.text.pdf.PdfPCell;
+import com.itextpdf.text.pdf.PdfPTable;
+import com.itextpdf.text.pdf.PdfWriter;
 import com.itextpdf.text.pdf.draw.LineSeparator;
 import net.dpco.pdf.dto.Model;
-import net.dpco.pdf.entity.Member;
+import net.dpco.pdf.entity.Applicant;
+import net.dpco.pdf.entity.Dependant;
 import net.dpco.pdf.entity.Spouse;
-import net.dpco.pdf.service.MemberService;
-import net.dpco.pdf.service.SpousesService;
+import net.dpco.pdf.service.ApplicantService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.env.Environment;
@@ -15,22 +18,29 @@ import org.springframework.stereotype.Component;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.*;
-import java.util.*;
+import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Component
 @PropertySource(value = "classpath:pdf.properties", encoding = "UTF-8")
 public class PdfGenerator {
 
-  @Autowired private Environment environment;
+  private Environment environment;
 
-  @Autowired private MemberService memberService;
+  private ApplicantService applicantService;
 
-  @Autowired private SpousesService spousesService;
+  @Autowired
+  public PdfGenerator(Environment environment, ApplicantService applicantService) {
+    this.applicantService = applicantService;
+    this.environment = environment;
+  }
 
   private static Font normal =
-      FontFactory.getFont("fonts/B Nazanin.ttf", BaseFont.IDENTITY_H, 12, Font.NORMAL);
+      FontFactory.getFont("fonts/B Nazanin.ttf", BaseFont.IDENTITY_H, 10, Font.NORMAL);
   private static Font bold =
       FontFactory.getFont("fonts/B Nazanin.ttf", BaseFont.IDENTITY_H, 14, Font.BOLD);
 
@@ -45,13 +55,19 @@ public class PdfGenerator {
       document.open();
       document.add(documentBorder());
       createTable(document, 3, header(), bold, Element.ALIGN_CENTER, 0, 0);
-      addLine(document, 1f);
+      addLine(document, 1f , 100);
       createTable(document, 1, applicantsHeader(), bold, Element.ALIGN_LEFT, 0, 10);
       List<String> applicants = applicantsInfo(model);
       createTable(document, 4, applicants, normal, Element.ALIGN_LEFT, 0, 20);
+      addLine(document , 0.5f , 80);
       createTable(document, 1, spousesHeader(), bold, Element.ALIGN_LEFT, 0, 10);
       List<String> spouses = spouses(model);
       createTable(document, 4, spouses, normal, Element.ALIGN_LEFT, 0, 20);
+      addLine(document , 0.5f , 80);
+      createTable(document, 1, dependantsHeader(), bold, Element.ALIGN_LEFT ,0, 10);
+
+      createTable(document , 4 , dependants(model) , normal , Element.ALIGN_LEFT , 0 , 20);
+      addLine(document , 0.5f , 80);
       document.close();
       writer.close();
       OutputStream os = response.getOutputStream();
@@ -95,49 +111,77 @@ public class PdfGenerator {
     }
   }
 
-  private void addLine(Document document, float lineWith) throws Exception {
+  private void addLine(Document document, float lineWith , int percentage) throws Exception {
     try {
-      document.add(new LineSeparator(lineWith, 100, null, 0, -5));
+      document.add(new LineSeparator(lineWith, percentage, null, Element.ALIGN_CENTER, -5));
     } catch (Exception ex) {
       throw new Exception(ex);
     }
   }
 
-  private List<String> applicantsInfo(Model model) {
-    List<String> list = new ArrayList<>();
-    Member member =
-        memberService.findByNationalCodeAndTrackingCode(
-            model.getNationalCode(), model.getTrackingCode());
+  private List<String> applicantsInfo(Model model) throws Exception {
+    try {
+      List<String> list = new ArrayList<>();
+      Applicant applicant = findByModel(model);
+      list.add(environment.getProperty("name"));
+      list.add(applicant.getFirstName());
+      list.add(environment.getProperty("last_name"));
+      list.add(applicant.getLastName());
+      list.add(environment.getProperty("national_code"));
+      list.add(applicant.getNationalCode());
+      list.add(environment.getProperty("tracking_code"));
+      list.add(applicant.getTrackingCode().toString());
+      return list;
 
-    list.add(environment.getProperty("name"));
-    list.add(member.getName());
-    list.add(environment.getProperty("last_name"));
-    list.add(member.getLastName());
-    list.add(environment.getProperty("national_code"));
-    list.add(member.getNationalCode());
-    list.add(environment.getProperty("tracking_code"));
-    list.add(member.getTrackingCode());
-    return list;
+    } catch (Exception ex) {
+      throw new Exception(ex.getMessage());
+    }
   }
 
-  private List<String> spouses(Model model) {
-    List<String> list = new ArrayList<>();
-    Member member =
-        memberService.findByNationalCodeAndTrackingCode(
-            model.getNationalCode(), model.getTrackingCode());
-    List<Spouse> spouses = spousesService.findByMember(member);
-
-    for (Spouse spouse : spouses) {
-      list.add(environment.getProperty("name"));
-      list.add(spouse.getName());
-      list.add(environment.getProperty("last_name"));
-      list.add(spouse.getLastName());
-      list.add(environment.getProperty("national_code"));
-      list.add(spouse.getNationalCode());
-      list.add(environment.getProperty("fatherName"));
-      list.add(spouse.getFatherName());
+  private List<String> spouses(Model model) throws Exception {
+    try {
+      List<String> list = new ArrayList<>();
+      Applicant applicant = findByModel(model);
+      Set<Spouse> spouses = applicant.getSpouses();
+      for (Spouse spouse : spouses) {
+        list.add(environment.getProperty("name"));
+        list.add(spouse.getFirstName());
+        list.add(environment.getProperty("last_name"));
+        list.add(spouse.getLastName());
+        list.add(environment.getProperty("national_code"));
+        list.add(spouse.getNationalCode());
+        list.add(environment.getProperty("fatherName"));
+        list.add(spouse.getFatherName());
+      }
+      return list;
+    } catch (Exception ex) {
+      throw new Exception(ex.getMessage());
     }
-    return list;
+  }
+
+  private List<String> dependants(Model model) throws Exception {
+    try{
+      Applicant applicant = findByModel(model);
+      Set<Dependant> dependants  = applicant.getDependants();
+      List<String> list = new ArrayList<>();
+        for(Dependant dep : dependants){
+          list.add(environment.getProperty("name"));
+          list.add(dep.getFirstName());
+          list.add(environment.getProperty("last_name"));
+          list.add(dep.getLastName());
+          list.add(environment.getProperty("national_code"));
+          list.add(dep.getNationalCode());
+          list.add(environment.getProperty("birt_date"));
+          list.add(dep.getBirthYear());
+          list.add(environment.getProperty("gender"));
+          list.add(dep.getGender().toString());
+          list.add(" ");
+          list.add(" ");
+      }
+      return list;
+    }catch (Exception ex){
+      throw new Exception(ex.getMessage());
+    }
   }
 
   private Rectangle documentBorder() {
@@ -169,5 +213,22 @@ public class PdfGenerator {
     List<String> spousesHeader = new ArrayList<>();
     spousesHeader.add(environment.getProperty("spouses_header"));
     return spousesHeader;
+  }
+
+  private Applicant findByModel(Model model) throws Exception {
+    try {
+
+      return applicantService.findByNationalCodeAndTrackingCode(
+          model.getNationalCode(), model.getTrackingCode());
+
+    } catch (Exception ex) {
+      throw new Exception(ex.getMessage());
+    }
+  }
+
+  private List<String> dependantsHeader(){
+    List<String> dependantsHeader = new ArrayList<>();
+    dependantsHeader.add(environment.getProperty("dependants_header"));
+    return dependantsHeader;
   }
 }
