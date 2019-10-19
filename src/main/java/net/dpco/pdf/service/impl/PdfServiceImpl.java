@@ -21,8 +21,21 @@ public class PdfServiceImpl implements PdfService {
   }
 
   @Override
-  public byte[] makePdf(Model model, HttpServletRequest request, HttpServletResponse response)
-      throws DocumentException {
-    return pdfGenerator.generate(model, request, response);
+  public byte[] makeBriefPdf(Model model, HttpServletRequest request, HttpServletResponse response)
+          throws Exception {
+    try{
+    return pdfGenerator.generateBriefPdf(model, request, response);
+      }catch (Exception ex){
+      throw new Exception(ex.getMessage());
+    }
+  }
+
+  @Override
+  public byte[] makepromisePdf(Model model, HttpServletRequest request, HttpServletResponse response) throws Exception {
+    try{
+      return pdfGenerator.generatePromisePdf(model, request, response);
+    }catch (Exception ex){
+      throw new Exception(ex.getMessage());
+    }
   }
 }

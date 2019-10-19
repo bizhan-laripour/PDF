@@ -1,16 +1,16 @@
 package net.dpco.pdf.generator;
 
 import com.itextpdf.text.*;
-import com.itextpdf.text.pdf.BaseFont;
-import com.itextpdf.text.pdf.PdfPCell;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfWriter;
+import com.itextpdf.text.pdf.*;
 import com.itextpdf.text.pdf.draw.LineSeparator;
 import net.dpco.pdf.dto.Model;
 import net.dpco.pdf.entity.Applicant;
 import net.dpco.pdf.entity.Dependant;
 import net.dpco.pdf.entity.ResidenceRecord;
 import net.dpco.pdf.entity.Spouse;
+import net.dpco.pdf.enums.Gender;
+import net.dpco.pdf.enums.MaritalStatus;
+import net.dpco.pdf.enums.PhysicalStatus;
 import net.dpco.pdf.enums.ResidenceCase;
 import net.dpco.pdf.service.ApplicantService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,31 +44,34 @@ public class PdfGenerator {
       FontFactory.getFont("fonts/B Nazanin.ttf", BaseFont.IDENTITY_H, 10, Font.NORMAL);
   private static Font bold =
       FontFactory.getFont("fonts/B Nazanin.ttf", BaseFont.IDENTITY_H, 14, Font.BOLD);
+  private static Font promiseFont =
+          FontFactory.getFont("fonts/B Nazanin.ttf", BaseFont.IDENTITY_H, 12, Font.BOLD);
 
-  public byte[] generate(Model model, HttpServletRequest request, HttpServletResponse response) {
-
+  public byte[] generateBriefPdf(
+      Model model, HttpServletRequest request, HttpServletResponse response) throws Exception {
     Document document = new Document();
-
     response.setContentType("application/pdf");
     final ByteArrayOutputStream baos = new ByteArrayOutputStream();
     try {
       PdfWriter writer = PdfWriter.getInstance(document, response.getOutputStream());
       document.open();
-      document.add(documentBorder());
+      border(writer, document);
       createTable(document, 3, header(), bold, Element.ALIGN_CENTER, 0, 0);
-      addLine(document, 1.5f, 100 , BaseColor.BLACK);
+      addLine(document, 1.5f, 100, BaseColor.BLACK);
       createTable(document, 1, applicantsHeader(), bold, Element.ALIGN_LEFT, 0, 10);
-      List<String> applicants = applicantsInfo(model);
-      createTable(document, 6, applicants, normal, Element.ALIGN_LEFT, 0, 20);
-      addLine(document, 1f, 80 , BaseColor.BLACK);
+      createTable(document, 6, applicantsInfo(model), normal, Element.ALIGN_LEFT, 0, 20);
+      addLine(document, 1f, 80, BaseColor.BLACK);
       createTable(document, 1, spousesHeader(), bold, Element.ALIGN_LEFT, 0, 10);
-      List<String> spouses = spouses(model);
-      createTable(document, 6, spouses, normal, Element.ALIGN_LEFT, 0, 20);
-      addLine(document, 1f, 80 , BaseColor.BLACK);
+      createTable(document, 6, spouses(model), normal, Element.ALIGN_LEFT, 0, 20);
+      addLine(document, 1f, 80, BaseColor.BLACK);
       createTable(document, 1, dependantsHeader(), bold, Element.ALIGN_LEFT, 0, 10);
-
       createTable(document, 6, dependants(model), normal, Element.ALIGN_LEFT, 0, 20);
-      addLine(document, 1f, 80 , BaseColor.BLACK);
+      addLine(document, 1f, 80, BaseColor.BLACK);
+      createTable(document, 1, addTextHeader(), bold, Element.ALIGN_LEFT, 0, 10);
+      createTable(document, 1, textList(), normal, Element.ALIGN_LEFT, 0, 20);
+      addLine(document, 1f, 80, BaseColor.BLACK);
+      createTable(document, 3, signList(), promiseFont, Element.ALIGN_CENTER, 0, 20);
+      border(writer, document);
       document.close();
       writer.close();
       OutputStream os = response.getOutputStream();
@@ -76,7 +79,34 @@ public class PdfGenerator {
       os.flush();
       os.close();
     } catch (Exception e) {
-      e.printStackTrace();
+      throw new Exception(e.getMessage());
+    }
+    return baos.toByteArray();
+  }
+
+  public byte[] generatePromisePdf(
+      Model model, HttpServletRequest request, HttpServletResponse response) throws Exception {
+    Document document = new Document();
+    response.setContentType("application/pdf");
+    final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    try {
+      PdfWriter writer = PdfWriter.getInstance(document, response.getOutputStream());
+      document.open();
+      border(writer, document);
+      createTable(document, 3, promiseHeader(), bold, Element.ALIGN_CENTER, 0, 0);
+      addLine(document, 1.5f, 100, BaseColor.BLACK);
+      createTable(document, 6, promiseList(model), promiseFont, Element.ALIGN_LEFT, 0, 20);
+      createTable(document, 1, promiseText(), promiseFont, Element.ALIGN_LEFT, 0, 20);
+      createTable(document, 3, promiseSign(), promiseFont, Element.ALIGN_CENTER, 0, 20);
+
+      document.close();
+      writer.close();
+      OutputStream os = response.getOutputStream();
+      baos.writeTo(os);
+      os.flush();
+      os.close();
+    } catch (Exception e) {
+      throw new Exception(e.getMessage());
     }
     return baos.toByteArray();
   }
@@ -112,15 +142,31 @@ public class PdfGenerator {
     }
   }
 
-  private void addLine(Document document, float lineWith, int percentage , BaseColor color) throws Exception {
+  /**
+   * adding the line wherever you want you can choose the color and
+   *
+   * @param document
+   * @param lineWith
+   * @param percentage
+   * @param color
+   * @throws Exception
+   */
+  private void addLine(Document document, float lineWith, int percentage, BaseColor color)
+      throws Exception {
     try {
-      document.add(
-          new LineSeparator(lineWith, percentage, color, Element.ALIGN_CENTER, -5));
+      document.add(new LineSeparator(lineWith, percentage, color, Element.ALIGN_CENTER, -5));
     } catch (Exception ex) {
       throw new Exception(ex);
     }
   }
 
+  /**
+   * make list of applicants info to set in the tables
+   *
+   * @param model
+   * @return
+   * @throws Exception
+   */
   private List<String> applicantsInfo(Model model) throws Exception {
     try {
       List<String> list = new ArrayList<>();
@@ -141,7 +187,7 @@ public class PdfGenerator {
       list.add(applicant.getJob().getTitle());
       list.add(environment.getProperty("mobile_no"));
       list.add(applicant.getMobileNo().toString());
-      list.add(environment.getProperty("birth_crtificate_no"));
+      list.add(environment.getProperty("birth_certificate_no"));
       list.add(applicant.getBirthCertificateNo());
       StringBuilder builder = new StringBuilder();
       StringBuilder currentCity = new StringBuilder();
@@ -155,6 +201,24 @@ public class PdfGenerator {
         builder.append(residenceRecord.getAddress().getAddress() + ";");
       }
       builder.delete(builder.length() - 1, builder.length());
+      list.add(environment.getProperty("marital_status"));
+      if (applicant.getMaritalStatus().equals(MaritalStatus.SINGLE)) {
+        list.add(environment.getProperty("single"));
+      } else {
+        list.add(environment.getProperty("married"));
+      }
+      list.add(environment.getProperty("gender"));
+      if (applicant.getGender().equals(Gender.MALE)) {
+        list.add(environment.getProperty("male"));
+      } else {
+        list.add(environment.getProperty("female"));
+      }
+      list.add(environment.getProperty("physical_status"));
+      if (applicant.getPhysicalStatus().equals(PhysicalStatus.HEALTHY)) {
+        list.add(environment.getProperty("healthy"));
+      } else {
+        list.add(environment.getProperty("disabled"));
+      }
       list.add(environment.getProperty("existance_place"));
       list.add(currentCity.toString());
       list.add(environment.getProperty("dependants_number"));
@@ -185,10 +249,16 @@ public class PdfGenerator {
         list.add(spouse.getNationalCode());
         list.add(environment.getProperty("fatherName"));
         list.add(spouse.getFatherName());
-        list.add(environment.getProperty("birth_crtificate_no"));
+        list.add(environment.getProperty("birth_certificate_no"));
         list.add(spouse.getBirthCertificateNo());
         list.add(environment.getProperty("mobile_no"));
         list.add(spouse.getMobileNo());
+        list.add(environment.getProperty("birth_place"));
+        list.add(spouse.getBirthPlace());
+        list.add(environment.getProperty("birth_date"));
+        list.add(spouse.getBirthDate().toString());
+        list.add(" ");
+        list.add(" ");
       }
 
       return list;
@@ -222,21 +292,20 @@ public class PdfGenerator {
     }
   }
 
-  private Rectangle documentBorder() {
-    Rectangle rect = new Rectangle(577, 825, 18, 15); // you can resize rectangle
-    rect.enableBorderSide(1);
-    rect.enableBorderSide(2);
-    rect.enableBorderSide(4);
-    rect.enableBorderSide(8);
-    rect.setBorderColor(BaseColor.BLACK);
-    rect.setBorderWidth(1);
-    return rect;
+  private void border(PdfWriter writer, Document document) {
+    PdfContentByte canvas = writer.getDirectContent();
+    Rectangle rect = new Rectangle(document.getPageSize());
+    rect.setBorder(Rectangle.BOX); // left, right, top, bottom border
+    rect.setBorderWidth(5); // a width of 5 user units
+    rect.setBorderColor(BaseColor.BLACK); // a red border
+    rect.setUseVariableBorders(true); // the full width will be visible
+    canvas.rectangle(rect);
   }
 
   private List<String> header() {
     List<String> header = new ArrayList<>();
     header.add("");
-    header.add(environment.getProperty("header"));
+    header.add(environment.getProperty("brief"));
     header.add("");
     return header;
   }
@@ -268,5 +337,101 @@ public class PdfGenerator {
     List<String> dependantsHeader = new ArrayList<>();
     dependantsHeader.add(environment.getProperty("dependants_header"));
     return dependantsHeader;
+  }
+
+  private List<String> addTextHeader() {
+    List<String> first = new ArrayList<>();
+    first.add(environment.getProperty("promises"));
+    return first;
+  }
+
+  private List<String> textList() {
+    List<String> textList = new ArrayList<>();
+    textList.add(environment.getProperty("first_line_text"));
+    textList.add(environment.getProperty("second_line"));
+    textList.add(environment.getProperty("third_line"));
+    textList.add(environment.getProperty("forth_line"));
+    textList.add(environment.getProperty("fifth_line"));
+    textList.add(environment.getProperty("sixth_line"));
+    textList.add(environment.getProperty("seventh_line"));
+    textList.add(environment.getProperty("eighth_line"));
+    textList.add(environment.getProperty("nine_line"));
+    textList.add(environment.getProperty("ten_line"));
+    textList.add(environment.getProperty("eleven_line"));
+    textList.add(environment.getProperty("twelve_line"));
+    textList.add(environment.getProperty("thirteen_line"));
+    textList.add(environment.getProperty("fortheen_line"));
+    textList.add(environment.getProperty("fiftheen_line"));
+    textList.add(environment.getProperty("sixteen_line"));
+    textList.add(environment.getProperty("seventeen_line"));
+
+    return textList;
+  }
+
+  private List<String> signList() {
+    List<String> signList = new ArrayList<>();
+    signList.add(environment.getProperty("manager_sign"));
+    signList.add(environment.getProperty("expert_sign"));
+    signList.add(environment.getProperty("applicant_sign"));
+    return signList;
+  }
+
+  private List<String> promiseList(Model model) throws Exception {
+    try {
+
+      List<String> promiseList = new ArrayList<>();
+      Applicant applicant = findByModel(model);
+      promiseList.add(environment.getProperty("promise_first"));
+      promiseList.add(applicant.getFirstName() + " " + applicant.getLastName());
+      promiseList.add(environment.getProperty("promise_second"));
+      promiseList.add(applicant.getBirthPlace());
+      promiseList.add(environment.getProperty("promise_third"));
+      promiseList.add(applicant.getBirthCertificateNo());
+      promiseList.add(environment.getProperty("promise_forth"));
+      promiseList.add(applicant.getNationalCode());
+      promiseList.add(environment.getProperty("promise_fifth"));
+      StringBuilder currentCity = new StringBuilder();
+      for (ResidenceRecord residenceRecord : applicant.getResidenceRecords()) {
+        if (residenceRecord.getResidenceCase().equals(ResidenceCase.CURRENT)) {
+          currentCity.append(
+              residenceRecord.getAddress().getCenter().getProvince()
+                  + "/"
+                  + residenceRecord.getAddress().getCenter().getCity());
+        }
+      }
+      promiseList.add(currentCity.toString());
+      promiseList.add(environment.getProperty("promise_sixth"));
+      promiseList.add(applicant.getIssuedPlace());
+      promiseList.add(environment.getProperty("promise_seventh"));
+
+      return promiseList;
+    } catch (Exception ex) {
+      throw new Exception(ex.getMessage());
+    }
+  }
+
+  private List<String> promiseText(){
+    List<String> promiseText = new ArrayList<>();
+    promiseText.add(environment.getProperty("promise_seventh"));
+    promiseText.add(environment.getProperty("promise_first_line"));
+    promiseText.add(environment.getProperty("promise_second_line"));
+    promiseText.add(environment.getProperty("promise_third_line"));
+    promiseText.add(environment.getProperty("promise_forth_line"));
+    return promiseText;
+  }
+
+  private List<String> promiseSign(){
+    List<String> list = new ArrayList<>();
+    list.add(" ");
+    list.add(" ");
+    list.add(environment.getProperty("applicant_sign"));
+    return list;
+  }
+  private List<String> promiseHeader(){
+    List<String> promiseHeader = new ArrayList<>();
+    promiseHeader.add(" ");
+    promiseHeader.add(environment.getProperty("header"));
+    promiseHeader.add(" ");
+    return promiseHeader;
   }
 }

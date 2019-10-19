@@ -8,6 +8,9 @@ import javax.servlet.http.HttpServletResponse;
 
 public interface PdfService {
 
-  byte[] makePdf(Model model, HttpServletRequest request, HttpServletResponse response)
-      throws DocumentException;
+  byte[] makeBriefPdf(Model model, HttpServletRequest request, HttpServletResponse response)
+          throws Exception;
+
+  byte[] makepromisePdf(Model model, HttpServletRequest request, HttpServletResponse response)
+          throws Exception;
 }
